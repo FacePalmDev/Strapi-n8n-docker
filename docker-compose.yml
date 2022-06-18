@@ -13,17 +13,39 @@ services:
       DATABASE_USERNAME: strapi
       DATABASE_PASSWORD: strapi
       DATABASE_SSL: 'false'
-    
     networks:
       - strapi-app-network
-      
     volumes:
-      - ./app:/srv/
+      - strapi:/srv/
     ports:
       - "1337:1337"
-
     depends_on:
+      mysql: 
+        condition: service_healthy
+
+  n8n:
+    container_name: n8n
+    restart: unless-stopped
+    image: n8nio/n8n
+    environment:
+      DB_TYPE: mysqldb
+      DB_MYSQLDB_DATABASE: strapi
+      DB_MYSQLDB_HOST: mysql
+      DB_MYSQLDB_PORT: 3306
+      DB_MYSQLDB_USER: strapi
+      DB_MYSQLDB_PASSWORD: strapi
+    ports:
+      - "5678:5678"
+    networks:
+      - strapi-app-network
+    links:
       - mysql
+    volumes: 
+      - n8n_data:/home/node/.n8n/
+    depends_on:
+      mysql: 
+        condition: service_healthy
+    
 
   mysql:
     image: mysql
@@ -36,11 +58,17 @@ services:
     networks:
       - strapi-app-network
     volumes:
-      - strapidata:/data/db
+      - mysqldb:/data/db
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
 networks:
   strapi-app-network:
     driver: bridge
 
 volumes:
-  strapidata:
+  strapi:
+  mysqldb:
+  n8n_data:
